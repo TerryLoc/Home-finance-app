@@ -77,10 +77,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "home_finance.wsgi.application"
 
-# Database — uses DATABASE_URL env var, falls back to SQLite
+# Database — uses DATABASE_URL env var, falls back to SQLite for local dev only
 DATABASES = {
     "default": env.db("DATABASE_URL", default=f'sqlite:///{BASE_DIR / "db.sqlite3"}')
 }
+
+# Guard: prevent ephemeral SQLite on Render / production.
+# On Render free tier the disk is wiped on every restart, so SQLite data is lost.
+import logging as _logging
+
+_db_engine = DATABASES["default"]["ENGINE"]
+if not DEBUG and "sqlite" in _db_engine:
+    _logger = _logging.getLogger("django")
+    _logger.warning(
+        "⚠️  DATABASE_URL is not set — falling back to SQLite. "
+        "Data WILL be lost on Render restarts. Set DATABASE_URL to a persistent database."
+    )
+    # Raise hard error so deploys fail visibly instead of silently losing data
+    raise RuntimeError(
+        "Refusing to start in production with SQLite. "
+        "Set the DATABASE_URL environment variable to a PostgreSQL connection string. "
+        "On Render, ensure the managed PostgreSQL database is provisioned and linked."
+    )
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

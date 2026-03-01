@@ -1,8 +1,3 @@
-databases:
-  - name: home-finance-db
-    databaseName: home_finance
-    plan: free
-
 services:
   - type: web
     name: home-finance-app
@@ -12,9 +7,7 @@ services:
     startCommand: 'gunicorn home_finance.wsgi:application'
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: home-finance-db
-          property: connectionString
+        sync: false  # Set manually in Render dashboard (Neon PostgreSQL)
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
