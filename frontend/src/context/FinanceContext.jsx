@@ -1,0 +1,147 @@
+import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
+import useLocalStorage from "../hooks/useLocalStorage";
+import { createDemoTransactions, DEFAULT_BUCKET_TARGETS } from "../utils/budgetHelpers";
+
+const FinanceContext = createContext(null);
+
+const defaultSettings = {
+  monthlyIncome: 0,
+  currency: "EUR",
+  bucketTargets: DEFAULT_BUCKET_TARGETS,
+};
+
+function generateId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
+}
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "INIT_APP": {
+      const monthlyIncome = Number(action.payload.monthlyIncome || 0);
+      const currency = action.payload.currency || "EUR";
+
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          monthlyIncome,
+          currency,
+          bucketTargets: state.settings.bucketTargets || DEFAULT_BUCKET_TARGETS,
+        },
+        transactions:
+          state.transactions.length > 0 ? state.transactions : createDemoTransactions(),
+        needsOnboarding: false,
+      };
+    }
+
+    case "UPDATE_SETTINGS":
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          ...action.payload,
+          bucketTargets: {
+            ...state.settings.bucketTargets,
+            ...(action.payload.bucketTargets || {}),
+          },
+        },
+      };
+
+    case "ADD_TRANSACTION":
+      return {
+        ...state,
+        transactions: [{ id: generateId(), ...action.payload }, ...state.transactions],
+      };
+
+    case "UPDATE_TRANSACTION":
+      return {
+        ...state,
+        transactions: state.transactions.map((transaction) =>
+          transaction.id === action.payload.id ? action.payload : transaction,
+        ),
+      };
+
+    case "DELETE_TRANSACTION":
+      return {
+        ...state,
+        transactions: state.transactions.filter(
+          (transaction) => transaction.id !== action.payload,
+        ),
+      };
+
+    case "ADD_GOAL":
+      return {
+        ...state,
+        goals: [{ id: generateId(), ...action.payload }, ...state.goals],
+      };
+
+    case "UPDATE_GOAL":
+      return {
+        ...state,
+        goals: state.goals.map((goal) =>
+          goal.id === action.payload.id ? action.payload : goal,
+        ),
+      };
+
+    case "DELETE_GOAL":
+      return {
+        ...state,
+        goals: state.goals.filter((goal) => goal.id !== action.payload),
+      };
+
+    default:
+      return state;
+  }
+}
+
+export function FinanceProvider({ children }) {
+  const [storedSettings, setStoredSettings] = useLocalStorage("hft_settings", null);
+  const [storedTransactions, setStoredTransactions] = useLocalStorage(
+    "hft_transactions",
+    null,
+  );
+  const [storedGoals, setStoredGoals] = useLocalStorage("hft_goals", null);
+
+  const hasExistingData =
+    storedSettings !== null || storedTransactions !== null || storedGoals !== null;
+
+  const [state, dispatch] = useReducer(reducer, {
+    settings: storedSettings ?? defaultSettings,
+    transactions: storedTransactions ?? [],
+    goals: storedGoals ?? [],
+    needsOnboarding: !hasExistingData,
+  });
+
+  useEffect(() => {
+    if (JSON.stringify(storedSettings) !== JSON.stringify(state.settings)) {
+      setStoredSettings(state.settings);
+    }
+  }, [state.settings, storedSettings, setStoredSettings]);
+
+  useEffect(() => {
+    if (JSON.stringify(storedTransactions) !== JSON.stringify(state.transactions)) {
+      setStoredTransactions(state.transactions);
+    }
+  }, [state.transactions, storedTransactions, setStoredTransactions]);
+
+  useEffect(() => {
+    if (JSON.stringify(storedGoals) !== JSON.stringify(state.goals)) {
+      setStoredGoals(state.goals);
+    }
+  }, [state.goals, storedGoals, setStoredGoals]);
+
+  const value = useMemo(() => ({ state, dispatch }), [state]);
+
+  return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
+}
+
+export function useFinance() {
+  const context = useContext(FinanceContext);
+  if (!context) {
+    throw new Error("useFinance must be used inside FinanceProvider");
+  }
+  return context;
+}
