@@ -536,6 +536,15 @@ class CategoryListView(LoginRequiredMixin, ListView):
             valid, msg = BudgetCategory.validate_household_allocations(household)
             ctx["allocation_valid"] = valid
             ctx["allocation_message"] = msg
+            # Compute per-bucket total percentages
+            from django.db.models import Sum
+
+            bucket_totals = (
+                BudgetCategory.objects.filter(household=household)
+                .values("bucket")
+                .annotate(total_pct=Sum("target_percentage"))
+            )
+            ctx["bucket_totals"] = {b["bucket"]: b["total_pct"] for b in bucket_totals}
         return ctx
 
 

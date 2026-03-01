@@ -62,6 +62,15 @@
                     </tr>
                     {% endfor %}
                 </tbody>
+                {% with group.list.0.bucket as bk %}
+                <tfoot>
+                    <tr class="table-light fw-bold">
+                        <td>Total</td>
+                        <td><span class="badge bg-{{ bk|bucket_color }}">{{ bucket_totals|dict_get:bk }}%</span></td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
+                {% endwith %}
             </table>
         </div>
     </div>

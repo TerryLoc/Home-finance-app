@@ -92,3 +92,11 @@ def percentage_of(value, total):
         return round((float(value) / float(total)) * 100, 1)
     except (ValueError, TypeError):
         return 0
+
+
+@register.filter
+def dict_get(d, key):
+    """Look up a key in a dictionary."""
+    if isinstance(d, dict):
+        return d.get(key, 0)
+    return 0
