@@ -1,0 +1,205 @@
+{% extends "tracker/base.html" %}
+{% load tracker_tags %}
+
+{% block title %}Reports — Family Finance{% endblock %}
+{% block nav_reports %}active{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold mb-0"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Reports — {{ year }}</h2>
+    <a href="{% url 'tracker:export_csv' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-download me-1"></i>Export All CSV
+    </a>
+</div>
+
+<!-- YTD Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <p class="text-muted mb-1 small">YTD Income</p>
+                <h4 class="fw-bold text-success">{{ cs }}{{ ytd_income|floatformat:0 }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <p class="text-muted mb-1 small">YTD Expenses</p>
+                <h4 class="fw-bold text-danger">{{ cs }}{{ ytd_expenses|floatformat:0 }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <p class="text-muted mb-1 small">YTD Net</p>
+                <h4 class="fw-bold {% if ytd_net >= 0 %}text-success{% else %}text-danger{% endif %}">{{ cs }}{{ ytd_net|floatformat:0 }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body">
+                <p class="text-muted mb-1 small">Avg Health Score</p>
+                <h4 class="fw-bold text-{{ avg_health|health_color }}">
+                    {% if avg_health %}{{ avg_health }}/100{% else %}—{% endif %}
+                </h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- YTD Bucket Breakdown -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 pt-3">
+                <h5 class="fw-bold mb-0">YTD Spending by Bucket</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="ytdDoughnut" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0 pt-3">
+                <h5 class="fw-bold mb-0">Income vs Expenses</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Health Score Trend -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent border-0 pt-3">
+        <h5 class="fw-bold mb-0">Budget Health Score Over Time</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="healthChart" style="max-height: 250px;"></canvas>
+    </div>
+</div>
+
+<!-- Monthly Breakdown Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent border-0 pt-3">
+        <h5 class="fw-bold mb-0">Monthly Breakdown</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Month</th>
+                        <th class="text-end">Income</th>
+                        <th class="text-end">Fixed</th>
+                        <th class="text-end">Investments</th>
+                        <th class="text-end">Savings</th>
+                        <th class="text-end">Guilt-Free</th>
+                        <th class="text-end">Total Spent</th>
+                        <th class="text-center">Health</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for snap in snapshots %}
+                    <tr>
+                        <td>{{ snap.month|date:"M Y" }}</td>
+                        <td class="text-end text-success">{{ cs }}{{ snap.total_income|floatformat:0 }}</td>
+                        <td class="text-end">{{ cs }}{{ snap.fixed_spent|floatformat:0 }}</td>
+                        <td class="text-end">{{ cs }}{{ snap.investments_spent|floatformat:0 }}</td>
+                        <td class="text-end">{{ cs }}{{ snap.savings_spent|floatformat:0 }}</td>
+                        <td class="text-end">{{ cs }}{{ snap.guilt_free_spent|floatformat:0 }}</td>
+                        <td class="text-end text-danger">{{ cs }}{{ snap.total_expenses|floatformat:0 }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-{{ snap.health_score|health_color }}">{{ snap.health_score }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">No data for this year yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const labels = {{ monthly_labels|safe }};
+const incomeData = {{ monthly_income|safe }};
+const expenseData = {{ monthly_expenses|safe }};
+const healthData = {{ monthly_health|safe }};
+
+// YTD Doughnut
+const ytdCtx = document.getElementById('ytdDoughnut');
+if (ytdCtx) {
+    new Chart(ytdCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Fixed Costs', 'Investments', 'Savings', 'Guilt-Free'],
+            datasets: [{
+                data: [{{ ytd_fixed }}, {{ ytd_investments }}, {{ ytd_savings }}, {{ ytd_guilt_free }}],
+                backgroundColor: ['#0d6efd', '#198754', '#0dcaf0', '#ffc107'],
+                borderWidth: 2, borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true } } },
+            cutout: '60%'
+        }
+    });
+}
+
+// Income vs Expenses Line
+const trendCtx = document.getElementById('trendChart');
+if (trendCtx) {
+    new Chart(trendCtx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Income', data: incomeData, backgroundColor: 'rgba(25,135,84,0.7)' },
+                { label: 'Expenses', data: expenseData, backgroundColor: 'rgba(220,53,69,0.7)' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: true, ticks: { callback: v => '{{ cs }}' + v.toLocaleString() } } }
+        }
+    });
+}
+
+// Health Score Line
+const healthCtx = document.getElementById('healthChart');
+if (healthCtx) {
+    new Chart(healthCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Health Score',
+                data: healthData,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13,110,253,0.1)',
+                fill: true, tension: 0.3,
+                pointRadius: 5, pointBackgroundColor: '#0d6efd'
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { min: 0, max: 100, ticks: { stepSize: 25 } } }
+        }
+    });
+}
+</script>
+{% endblock %}

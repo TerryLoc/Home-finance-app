@@ -1,0 +1,76 @@
+{% extends "tracker/base.html" %}
+
+{% block main_class %}{% endblock %}
+
+{% block content %}
+<div class="login-page d-flex align-items-center min-vh-100 bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="text-center mb-4">
+                    <i class="bi bi-wallet2 display-1 text-primary"></i>
+                    <h1 class="h3 mt-3 fw-bold">Create Your Account</h1>
+                    <p class="text-muted">Join or create a household to start tracking</p>
+                </div>
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <form method="post">
+                            {% csrf_token %}
+
+                            <h6 class="text-muted mb-3"><i class="bi bi-person-plus me-2"></i>Your Details</h6>
+
+                            {% for field in form %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text|safe }}</div>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+
+                            <hr>
+                            <h6 class="text-muted mb-3"><i class="bi bi-house-heart me-2"></i>Household</h6>
+
+                            <ul class="nav nav-pills mb-3" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#newHousehold" type="button">Create New</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#joinHousehold" type="button">Join Existing</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <div class="tab-pane fade show active" id="newHousehold">
+                                    <div class="mb-3">
+                                        <label class="form-label">Household Name</label>
+                                        {{ household_form.name }}
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="joinHousehold">
+                                    <div class="mb-3">
+                                        <label class="form-label">Household ID</label>
+                                        <input type="text" name="join_household" class="form-control" placeholder="Enter household ID from a family member">
+                                        <div class="form-text">Ask a family member for their household ID (shown in Settings).</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 py-2 mt-3">
+                                <i class="bi bi-check-circle me-2"></i>Create Account
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <p class="text-center mt-3 text-muted">
+                    Already have an account? <a href="{% url 'login' %}">Sign in</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
