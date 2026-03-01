@@ -12,122 +12,88 @@ const initial = {
 
 export default function TransactionForm({ onSubmit, editingTransaction, onCancelEdit }) {
   const [form, setForm] = useState(initial);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (editingTransaction) {
       setForm({ ...editingTransaction, amount: String(editingTransaction.amount) });
+      setOpen(true);
     }
   }, [editingTransaction]);
 
-  const submitLabel = useMemo(() => (editingTransaction ? "Update" : "Add"), [editingTransaction]);
+  const isEditing = !!editingTransaction;
+  const submitLabel = useMemo(() => (isEditing ? "Update" : "Add"), [isEditing]);
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
+  const handleChange = (e) => {
+    const { name, value } = e.target;
     if (name === "description") {
-      setForm((prev) => ({
-        ...prev,
-        description: value,
-        bucket: tagBucketFromDescription(value),
-      }));
+      setForm((p) => ({ ...p, description: value, bucket: tagBucketFromDescription(value) }));
       return;
     }
-
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((p) => ({ ...p, [name]: value }));
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-
-    const payload = {
-      ...form,
-      amount: Number(form.amount),
-    };
-
-    onSubmit(payload);
-
-    if (!editingTransaction) {
-      setForm(initial);
-    }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit({ ...form, amount: Number(form.amount) });
+    if (!isEditing) { setForm(initial); setOpen(false); }
   };
+
+  if (!open && !isEditing) {
+    return (
+      <button onClick={() => setOpen(true)} className="btn-primary flex items-center gap-2 self-start">
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+        New Transaction
+      </button>
+    );
+  }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2"
-    >
-      <input
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        type="date"
-        name="date"
-        value={form.date}
-        onChange={handleChange}
-        required
-      />
-      <input
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        type="number"
-        min="0"
-        step="0.01"
-        name="amount"
-        placeholder="Amount"
-        value={form.amount}
-        onChange={handleChange}
-        required
-      />
-      <input
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm md:col-span-2"
-        type="text"
-        name="description"
-        placeholder="Description"
-        value={form.description}
-        onChange={handleChange}
-        required
-      />
-      <input
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        type="text"
-        name="category"
-        placeholder="Category"
-        value={form.category}
-        onChange={handleChange}
-        required
-      />
-      <select
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        name="bucket"
-        value={form.bucket}
-        onChange={handleChange}
-      >
-        {BUCKETS.map((bucket) => (
-          <option key={bucket.key} value={bucket.key}>
-            {bucket.label}
-          </option>
-        ))}
-      </select>
-      <select
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        name="type"
-        value={form.type}
-        onChange={handleChange}
-      >
-        <option value="expense">Expense</option>
-        <option value="income">Income</option>
-      </select>
-
-      <div className="flex gap-2 md:col-span-2">
-        <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white" type="submit">
-          {submitLabel} Transaction
-        </button>
-        {editingTransaction ? (
-          <button
-            type="button"
-            onClick={onCancelEdit}
-            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
-          >
-            Cancel
+    <form onSubmit={handleSubmit} className="card animate-slide-up space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-700">{isEditing ? "Edit Transaction" : "New Transaction"}</h3>
+        {!isEditing && (
+          <button type="button" onClick={() => setOpen(false)} className="text-slate-400 transition hover:text-slate-600">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
-        ) : null}
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Date</label>
+          <input className="input-field" type="date" name="date" value={form.date} onChange={handleChange} required />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Amount</label>
+          <input className="input-field" type="number" min="0" step="0.01" name="amount" placeholder="0.00" value={form.amount} onChange={handleChange} required />
+        </div>
+        <div className="sm:col-span-2 xl:col-span-1">
+          <label className="mb-1 block text-xs font-medium text-slate-500">Type</label>
+          <select className="input-field" name="type" value={form.type} onChange={handleChange}>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+        <div className="sm:col-span-2 xl:col-span-3">
+          <label className="mb-1 block text-xs font-medium text-slate-500">Description</label>
+          <input className="input-field" type="text" name="description" placeholder="e.g. Grocery shopping" value={form.description} onChange={handleChange} required />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Category</label>
+          <input className="input-field" type="text" name="category" placeholder="e.g. Food" value={form.category} onChange={handleChange} required />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Bucket</label>
+          <select className="input-field" name="bucket" value={form.bucket} onChange={handleChange}>
+            {BUCKETS.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 pt-1">
+        <button type="submit" className="btn-primary">{submitLabel} Transaction</button>
+        {isEditing && <button type="button" onClick={onCancelEdit} className="btn-secondary">Cancel</button>}
       </div>
     </form>
   );

@@ -93,6 +93,28 @@ export function getMonthKey(
   return dateString.slice(0, 7);
 }
 
+/**
+ * Return the income for a given month from the per-month map.
+ * Falls back to the most recent prior month's income, then 0.
+ */
+export function getMonthlyIncome(settings, monthKey) {
+  const map = settings?.monthlyIncomes || {};
+  if (map[monthKey] !== undefined) return Number(map[monthKey]);
+
+  // Fallback: find the most recent month that has an entry
+  const keys = Object.keys(map)
+    .filter((k) => k < monthKey)
+    .sort()
+    .reverse();
+  if (keys.length) return Number(map[keys[0]]);
+
+  // Legacy single-value fallback
+  if (settings?.monthlyIncome !== undefined)
+    return Number(settings.monthlyIncome || 0);
+
+  return 0;
+}
+
 export function calculateMonthlySpend(transactions, monthKey) {
   return transactions
     .filter((transaction) => getMonthKey(transaction.date) === monthKey)

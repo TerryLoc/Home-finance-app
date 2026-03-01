@@ -1,43 +1,35 @@
 import { useMemo, useState } from "react";
 import TransactionForm from "../components/TransactionForm";
 import { useFinance } from "../context/FinanceContext";
-import { BUCKETS, formatCurrency, getMonthKey } from "../utils/budgetHelpers";
+import { BUCKETS, formatCurrency, getBucketMeta, getMonthKey } from "../utils/budgetHelpers";
 
 export default function Transactions() {
-  const {
-    state: { transactions, settings },
-    dispatch,
-  } = useFinance();
-
+  const { state: { transactions, settings }, dispatch } = useFinance();
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [bucketFilter, setBucketFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(getMonthKey());
 
   const filtered = useMemo(() => {
     return transactions
-      .filter((transaction) => bucketFilter === "all" || transaction.bucket === bucketFilter)
-      .filter((transaction) => !monthFilter || getMonthKey(transaction.date) === monthFilter)
+      .filter((t) => bucketFilter === "all" || t.bucket === bucketFilter)
+      .filter((t) => !monthFilter || getMonthKey(t.date) === monthFilter)
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [transactions, bucketFilter, monthFilter]);
 
   const handleSubmit = (payload) => {
     if (editingTransaction) {
-      dispatch({
-        type: "UPDATE_TRANSACTION",
-        payload: { ...editingTransaction, ...payload, id: editingTransaction.id },
-      });
+      dispatch({ type: "UPDATE_TRANSACTION", payload: { ...editingTransaction, ...payload, id: editingTransaction.id } });
       setEditingTransaction(null);
       return;
     }
-
     dispatch({ type: "ADD_TRANSACTION", payload });
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Transactions</h2>
-        <p className="text-sm text-slate-500">Track, filter, and manage household spending.</p>
+        <h2 className="page-header">Transactions</h2>
+        <p className="page-subtitle">Track, filter, and manage household spending.</p>
       </div>
 
       <TransactionForm
@@ -46,78 +38,80 @@ export default function Transactions() {
         onCancelEdit={() => setEditingTransaction(null)}
       />
 
-      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2">
-        <select
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-          value={bucketFilter}
-          onChange={(event) => setBucketFilter(event.target.value)}
-        >
-          <option value="all">All buckets</option>
-          {BUCKETS.map((bucket) => (
-            <option key={bucket.key} value={bucket.key}>
-              {bucket.label}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="month"
-          value={monthFilter}
-          onChange={(event) => setMonthFilter(event.target.value)}
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        />
+      {/* Filters */}
+      <div className="card grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Bucket</label>
+          <select className="input-field" value={bucketFilter} onChange={(e) => setBucketFilter(e.target.value)}>
+            <option value="all">All buckets</option>
+            {BUCKETS.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Month</label>
+          <input type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className="input-field" />
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Description</th>
-              <th className="px-4 py-3">Bucket</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filtered.map((transaction) => (
-              <tr key={transaction.id}>
-                <td className="px-4 py-3">{transaction.date}</td>
-                <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900">{transaction.description}</p>
-                  <p className="text-xs text-slate-500">{transaction.category}</p>
-                </td>
-                <td className="px-4 py-3 capitalize">{transaction.bucket.replace("_", " ")}</td>
-                <td className="px-4 py-3">
-                  {formatCurrency(transaction.amount, settings.currency)}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditingTransaction(transaction)}
-                      className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => dispatch({ type: "DELETE_TRANSACTION", payload: transaction.id })}
-                      className="rounded-lg border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-600"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={5}>
-                  No transactions match your filters.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+      {/* Table */}
+      <div className="card overflow-hidden !p-0">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <svg className="mb-3 h-12 w-12 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" />
+            </svg>
+            <p className="text-sm font-medium text-slate-500">No transactions match your filters.</p>
+            <p className="mt-1 text-xs text-slate-400">Try adjusting the bucket or month filter above.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100 text-sm">
+              <thead className="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Description</th>
+                  <th className="px-5 py-3">Bucket</th>
+                  <th className="px-5 py-3 text-right">Amount</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.map((t) => {
+                  const meta = getBucketMeta(t.bucket);
+                  return (
+                    <tr key={t.id} className="transition-colors hover:bg-slate-50/60">
+                      <td className="whitespace-nowrap px-5 py-3 text-slate-600">{t.date}</td>
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-slate-900">{t.description}</p>
+                        <p className="text-xs text-slate-500">{t.category}</p>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
+                          <span className="text-slate-600">{meta.label}</span>
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3 text-right font-medium text-slate-900">
+                        {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount, settings.currency)}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <button onClick={() => setEditingTransaction(t)} className="btn-secondary text-xs !px-2.5 !py-1">Edit</button>
+                          <button onClick={() => dispatch({ type: "DELETE_TRANSACTION", payload: t.id })} className="btn-danger text-xs !px-2.5 !py-1">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {filtered.length > 0 && (
+          <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-2.5 text-xs text-slate-500">
+            {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
+          </div>
+        )}
       </div>
     </div>
   );

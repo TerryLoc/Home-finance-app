@@ -8,130 +8,89 @@ import Reports from "./pages/Reports";
 import Transactions from "./pages/Transactions";
 import { BUCKETS } from "./utils/budgetHelpers";
 
-function OnboardingModal() {
-  const {
-    state: { settings },
-    dispatch,
-  } = useFinance();
-  const [monthlyIncome, setMonthlyIncome] = useState("");
-  const [currency, setCurrency] = useState(settings.currency || "EUR");
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    dispatch({
-      type: "INIT_APP",
-      payload: {
-        monthlyIncome: Number(monthlyIncome),
-        currency,
-      },
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl"
-      >
-        <h2 className="text-xl font-bold text-slate-900">Set up your monthly budget</h2>
-        <p className="text-sm text-slate-500">
-          Enter your monthly net income to initialize your household tracker.
-        </p>
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={monthlyIncome}
-          onChange={(event) => setMonthlyIncome(event.target.value)}
-          placeholder="Monthly net income"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2"
-          required
-        />
-        <select
-          value={currency}
-          onChange={(event) => setCurrency(event.target.value)}
-          className="w-full rounded-xl border border-slate-200 px-3 py-2"
-        >
-          <option value="EUR">EUR (€)</option>
-          <option value="GBP">GBP (£)</option>
-          <option value="USD">USD ($)</option>
-        </select>
-        <button
-          type="submit"
-          className="w-full rounded-xl bg-slate-900 px-4 py-2 font-semibold text-white"
-        >
-          Continue
-        </button>
-      </form>
-    </div>
-  );
-}
-
+/* ── Collapsible settings panel ── */
 function SettingsPanel() {
-  const {
-    state: { settings },
-    dispatch,
-  } = useFinance();
+  const { state: { settings }, dispatch } = useFinance();
+  const [open, setOpen] = useState(false);
 
   const updateTarget = (bucketKey, value) => {
-    dispatch({
-      type: "UPDATE_SETTINGS",
-      payload: {
-        bucketTargets: {
-          [bucketKey]: Number(value || 0),
-        },
-      },
-    });
+    dispatch({ type: "UPDATE_SETTINGS", payload: { bucketTargets: { [bucketKey]: Number(value || 0) } } });
   };
 
+  const totalPct = BUCKETS.reduce((s, b) => s + Number(settings.bucketTargets?.[b.key] ?? 0), 0);
+
   return (
-    <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-5">
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={settings.monthlyIncome}
-        onChange={(event) =>
-          dispatch({
-            type: "UPDATE_SETTINGS",
-            payload: { monthlyIncome: Number(event.target.value || 0) },
-          })
-        }
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        placeholder="Monthly income"
-      />
-      {BUCKETS.map((bucket) => (
-        <input
-          key={bucket.key}
-          type="number"
-          min="0"
-          step="0.1"
-          value={settings.bucketTargets?.[bucket.key] ?? 0}
-          onChange={(event) => updateTarget(bucket.key, event.target.value)}
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-          placeholder={`${bucket.label} %`}
-        />
-      ))}
+    <div className="card overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-slate-50"
+      >
+        <div className="flex items-center gap-3">
+          <svg className="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span className="text-sm font-semibold text-slate-700">Budget Settings</span>
+        </div>
+        <svg className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+      </button>
+
+      {open && (
+        <div className="animate-fade-in space-y-4 border-t border-slate-100 px-5 py-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Currency</label>
+              <select
+                value={settings.currency}
+                onChange={(e) => dispatch({ type: "UPDATE_SETTINGS", payload: { currency: e.target.value } })}
+                className="input-field"
+              >
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="USD">USD ($)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500">Bucket Targets</span>
+              <span className={`badge ${totalPct === 100 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {totalPct}% of 100%
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {BUCKETS.map((bucket) => (
+                <div key={bucket.key}>
+                  <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: bucket.color }} />
+                    {bucket.label}
+                  </label>
+                  <input
+                    type="number" min="0" step="0.5"
+                    value={settings.bucketTargets?.[bucket.key] ?? 0}
+                    onChange={(e) => updateTarget(bucket.key, e.target.value)}
+                    className="input-field"
+                    placeholder={`${bucket.min}–${bucket.max}%`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function App() {
-  const {
-    state: { needsOnboarding },
-  } = useFinance();
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      {needsOnboarding ? <OnboardingModal /> : null}
-
-      <div className="mx-auto flex min-h-screen max-w-[1440px]">
+      <div className="flex min-h-screen">
         <NavBar />
 
-        <main className="w-full p-4 pb-24 md:p-8 md:pb-8">
-          <SettingsPanel />
-
-          <div className="mt-6">
+        <main className="flex-1 overflow-y-auto px-4 pb-24 pt-6 md:px-8 md:pb-8">
+          <div className="mx-auto max-w-6xl space-y-6">
+            <SettingsPanel />
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/transactions" element={<Transactions />} />

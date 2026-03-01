@@ -5,10 +5,25 @@ import { createDemoTransactions, DEFAULT_BUCKET_TARGETS } from "../utils/budgetH
 const FinanceContext = createContext(null);
 
 const defaultSettings = {
-  monthlyIncome: 0,
+  monthlyIncomes: {},
   currency: "EUR",
   bucketTargets: DEFAULT_BUCKET_TARGETS,
 };
+
+/** Migrate old single monthlyIncome → per-month map */
+function migrateSettings(raw) {
+  if (!raw) return defaultSettings;
+  if (raw.monthlyIncome !== undefined && !raw.monthlyIncomes) {
+    const today = new Date();
+    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    return {
+      ...raw,
+      monthlyIncomes: { [key]: Number(raw.monthlyIncome || 0) },
+      monthlyIncome: undefined,
+    };
+  }
+  return { ...defaultSettings, ...raw };
+}
 
 function generateId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -19,21 +34,17 @@ function generateId() {
 
 function reducer(state, action) {
   switch (action.type) {
-    case "INIT_APP": {
-      const monthlyIncome = Number(action.payload.monthlyIncome || 0);
-      const currency = action.payload.currency || "EUR";
-
+    case "SET_MONTH_INCOME": {
+      const { monthKey, amount } = action.payload;
       return {
         ...state,
         settings: {
           ...state.settings,
-          monthlyIncome,
-          currency,
-          bucketTargets: state.settings.bucketTargets || DEFAULT_BUCKET_TARGETS,
+          monthlyIncomes: {
+            ...state.settings.monthlyIncomes,
+            [monthKey]: Number(amount || 0),
+          },
         },
-        transactions:
-          state.transactions.length > 0 ? state.transactions : createDemoTransactions(),
-        needsOnboarding: false,
       };
     }
 
@@ -105,14 +116,10 @@ export function FinanceProvider({ children }) {
   );
   const [storedGoals, setStoredGoals] = useLocalStorage("hft_goals", null);
 
-  const hasExistingData =
-    storedSettings !== null || storedTransactions !== null || storedGoals !== null;
-
   const [state, dispatch] = useReducer(reducer, {
-    settings: storedSettings ?? defaultSettings,
-    transactions: storedTransactions ?? [],
+    settings: migrateSettings(storedSettings),
+    transactions: storedTransactions ?? createDemoTransactions(),
     goals: storedGoals ?? [],
-    needsOnboarding: !hasExistingData,
   });
 
   useEffect(() => {
