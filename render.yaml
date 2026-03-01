@@ -7,7 +7,7 @@ services:
     startCommand: 'gunicorn home_finance.wsgi:application'
     envVars:
       - key: DATABASE_URL
-        sync: false  # Set manually in Render dashboard (Neon PostgreSQL)
+        sync: false # Set manually in Render dashboard (Neon PostgreSQL)
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
