@@ -12,7 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, True),
 )
-environ.Env.read_env(BASE_DIR / ".env")
+env_file = BASE_DIR / ".env"
+if env_file.exists():
+    environ.Env.read_env(env_file)
 
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production")
 DEBUG = env("DEBUG")
@@ -100,9 +102,9 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"  # collectstatic output
-STORAGE = {
+STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 
@@ -116,6 +118,7 @@ LOGOUT_REDIRECT_URL = "/login/"
 
 # ── Security (only enforced when DEBUG is False) ──────────────
 if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31_536_000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
