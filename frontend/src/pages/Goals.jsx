@@ -20,6 +20,13 @@ export default function Goals() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const targetAmount = Number(form.targetAmount);
+    const currentAmount = Number(form.currentAmount);
+    if (!form.name.trim() || targetAmount <= 0 || currentAmount < 0) {
+      return;
+    }
+
     const payload = { ...form, targetAmount: Number(form.targetAmount), currentAmount: Number(form.currentAmount) };
     if (editingGoal) {
       dispatch({ type: "UPDATE_GOAL", payload: { ...editingGoal, ...payload, id: editingGoal.id } });
@@ -30,6 +37,21 @@ export default function Goals() {
     setForm(blankGoal);
     setShowForm(false);
   };
+
+  const goalsWithProgress = useMemo(
+    () =>
+      goals
+        .map((goal) => {
+          const targetAmount = Number(goal.targetAmount || 0);
+          const currentAmount = Number(goal.currentAmount || 0);
+          const progress = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
+          return { ...goal, progress };
+        })
+        .sort((a, b) => b.progress - a.progress),
+    [goals],
+  );
+
+  const completedCount = goalsWithProgress.filter((goal) => goal.progress >= 100).length;
 
   const startEdit = (goal) => {
     setEditingGoal(goal);
@@ -97,6 +119,25 @@ export default function Goals() {
         </form>
       )}
 
+      {goals.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="card bg-white/85">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active Goals</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">{goals.length}</p>
+          </div>
+          <div className="card bg-white/85">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Completed</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-600">{completedCount}</p>
+          </div>
+          <div className="card bg-white/85">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Projected This Month</p>
+            <p className="mt-2 text-lg font-bold text-slate-900">
+              {Object.values(monthlyContributionsByBucket).reduce((sum, value) => sum + Number(value || 0), 0).toFixed(0)}
+            </p>
+          </div>
+        </div>
+      )}
+
       {goals.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-16 text-center">
           <svg className="mb-3 h-12 w-12 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -107,14 +148,18 @@ export default function Goals() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {goals.map((goal) => (
+          {goalsWithProgress.map((goal) => (
             <GoalCard
               key={goal.id}
               goal={goal}
               monthlyContribution={monthlyContributionsByBucket[goal.bucket] || 0}
               currency={settings.currency}
               onEdit={startEdit}
-              onDelete={(id) => dispatch({ type: "DELETE_GOAL", payload: id })}
+              onDelete={(id) => {
+                if (window.confirm("Delete this goal?")) {
+                  dispatch({ type: "DELETE_GOAL", payload: id });
+                }
+              }}
             />
           ))}
         </div>

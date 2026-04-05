@@ -8,13 +8,35 @@ export default function Transactions() {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [bucketFilter, setBucketFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(getMonthKey());
+  const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
     return transactions
       .filter((t) => bucketFilter === "all" || t.bucket === bucketFilter)
       .filter((t) => !monthFilter || getMonthKey(t.date) === monthFilter)
+      .filter((t) => {
+        if (!normalizedSearch) return true;
+        const haystack = `${t.description} ${t.category}`.toLowerCase();
+        return haystack.includes(normalizedSearch);
+      })
       .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [transactions, bucketFilter, monthFilter]);
+  }, [transactions, bucketFilter, monthFilter, search]);
+
+  const totals = useMemo(() => {
+    return filtered.reduce(
+      (acc, transaction) => {
+        if (transaction.type === "expense") {
+          acc.expenses += Number(transaction.amount || 0);
+        } else {
+          acc.income += Number(transaction.amount || 0);
+        }
+        return acc;
+      },
+      { expenses: 0, income: 0 },
+    );
+  }, [filtered]);
 
   const handleSubmit = (payload) => {
     if (editingTransaction) {
@@ -39,7 +61,7 @@ export default function Transactions() {
       />
 
       {/* Filters */}
-      <div className="card grid gap-3 sm:grid-cols-2">
+      <div className="card grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Bucket</label>
           <select className="input-field" value={bucketFilter} onChange={(e) => setBucketFilter(e.target.value)}>
@@ -50,6 +72,31 @@ export default function Transactions() {
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Month</label>
           <input type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className="input-field" />
+        </div>
+        <div className="sm:col-span-2 xl:col-span-1">
+          <label className="mb-1 block text-xs font-medium text-slate-500">Search</label>
+          <input
+            type="search"
+            className="input-field"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Description or category"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="card bg-white/85">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Filtered Income</p>
+          <p className="mt-2 text-lg font-bold text-emerald-600">{formatCurrency(totals.income, settings.currency)}</p>
+        </div>
+        <div className="card bg-white/85">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Filtered Expenses</p>
+          <p className="mt-2 text-lg font-bold text-rose-600">{formatCurrency(totals.expenses, settings.currency)}</p>
+        </div>
+        <div className="card bg-white/85">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Net</p>
+          <p className="mt-2 text-lg font-bold text-slate-900">{formatCurrency(totals.income - totals.expenses, settings.currency)}</p>
         </div>
       </div>
 
@@ -97,7 +144,16 @@ export default function Transactions() {
                       <td className="px-5 py-3 text-right">
                         <div className="flex justify-end gap-1.5">
                           <button onClick={() => setEditingTransaction(t)} className="btn-secondary text-xs !px-2.5 !py-1">Edit</button>
-                          <button onClick={() => dispatch({ type: "DELETE_TRANSACTION", payload: t.id })} className="btn-danger text-xs !px-2.5 !py-1">Delete</button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm("Delete this transaction?")) {
+                                dispatch({ type: "DELETE_TRANSACTION", payload: t.id });
+                              }
+                            }}
+                            className="btn-danger text-xs !px-2.5 !py-1"
+                          >
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -109,7 +165,7 @@ export default function Transactions() {
         )}
         {filtered.length > 0 && (
           <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-2.5 text-xs text-slate-500">
-            {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
+            {filtered.length} transaction{filtered.length !== 1 ? "s" : ""} shown
           </div>
         )}
       </div>

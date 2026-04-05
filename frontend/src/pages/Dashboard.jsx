@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import BucketCard from "../components/BucketCard";
 import { useFinance } from "../context/FinanceContext";
@@ -48,17 +49,37 @@ export default function Dashboard() {
   const { state: { settings, transactions }, dispatch } = useFinance();
 
   const monthKey = getMonthKey();
-  const monthlyIncome = getMonthlyIncome(settings, monthKey);
 
-  const breakdown = calculateBucketBreakdown({
-    transactions,
-    monthlyIncome,
-    bucketTargets: settings.bucketTargets,
-    monthKey,
-  });
+  const monthlyIncome = useMemo(
+    () => getMonthlyIncome(settings, monthKey),
+    [settings, monthKey],
+  );
 
-  const healthScore = calculateBudgetHealthScore(breakdown);
-  const monthlySpend = calculateMonthlySpend(transactions, monthKey);
+  const breakdown = useMemo(
+    () =>
+      calculateBucketBreakdown({
+        transactions,
+        monthlyIncome,
+        bucketTargets: settings.bucketTargets,
+        monthKey,
+      }),
+    [transactions, monthlyIncome, settings.bucketTargets, monthKey],
+  );
+
+  const healthScore = useMemo(
+    () => calculateBudgetHealthScore(breakdown),
+    [breakdown],
+  );
+  const monthlySpend = useMemo(
+    () => calculateMonthlySpend(transactions, monthKey),
+    [transactions, monthKey],
+  );
+
+  const remaining = Math.max(0, monthlyIncome - monthlySpend);
+  const topBucket = useMemo(
+    () => [...breakdown].sort((a, b) => b.actualPercent - a.actualPercent)[0],
+    [breakdown],
+  );
 
   const monthLabel = new Date().toLocaleDateString("en-IE", { month: "long", year: "numeric" });
 
@@ -69,7 +90,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Hero header */}
-      <div className="card flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+      <div className="card flex flex-col items-start justify-between gap-6 bg-gradient-to-r from-white to-brand-50/40 sm:flex-row sm:items-center">
         <div className="w-full sm:w-auto">
           <h2 className="page-header">Dashboard</h2>
           <p className="page-subtitle">{monthLabel}</p>
@@ -102,7 +123,7 @@ export default function Dashboard() {
             <div>
               <p className="text-xs font-medium text-slate-500">Remaining</p>
               <p className="text-lg font-bold text-emerald-600">
-                {formatCurrency(Math.max(0, monthlyIncome - monthlySpend), settings.currency)}
+                {formatCurrency(remaining, settings.currency)}
               </p>
             </div>
           </div>
@@ -111,6 +132,29 @@ export default function Dashboard() {
         <div className="flex flex-col items-center gap-1">
           <HealthRing score={healthScore} />
           <span className="text-xs font-semibold text-slate-500">Health Score</span>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="card bg-white/85">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Spend Ratio</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {monthlyIncome > 0 ? `${((monthlySpend / monthlyIncome) * 100).toFixed(1)}%` : "0%"}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">How much of this month&rsquo;s income is already allocated</p>
+        </div>
+        <div className="card bg-white/85">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Top Pressure Bucket</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">{topBucket?.label || "N/A"}</p>
+          <p className="mt-1 text-xs text-slate-500">Currently at {topBucket ? topBucket.actualPercent.toFixed(1) : "0.0"}%</p>
+        </div>
+        <div className="card bg-white/85 sm:col-span-2 xl:col-span-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Coaching Hint</p>
+          <p className="mt-2 text-sm font-medium text-slate-700">
+            {healthScore >= 80
+              ? "Strong month so far. Keep discretionary spend steady to preserve momentum."
+              : "Shift a little spend from non-essential categories to recover toward target."}
+          </p>
         </div>
       </div>
 

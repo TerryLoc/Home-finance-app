@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useFinance } from "../context/FinanceContext";
-import { BUCKETS, getMonthKey } from "../utils/budgetHelpers";
+import { BUCKETS, formatCurrency, getMonthKey } from "../utils/budgetHelpers";
 import { exportTransactionsCsv } from "../utils/csvExport";
 
 /* Styled tooltip */
@@ -21,16 +22,35 @@ function ChartTooltip({ active, payload, label }) {
 }
 
 export default function Reports() {
-  const { state: { transactions } } = useFinance();
+  const { state: { transactions, settings } } = useFinance();
 
-  const grouped = {};
-  for (const t of transactions) {
-    if (t.type !== "expense") continue;
-    const month = getMonthKey(t.date);
-    if (!grouped[month]) grouped[month] = { month, fixed: 0, investments: 0, savings: 0, guilt_free: 0 };
-    grouped[month][t.bucket] += Number(t.amount || 0);
-  }
-  const data = Object.values(grouped).sort((a, b) => (a.month > b.month ? 1 : -1));
+  const data = useMemo(() => {
+    const grouped = {};
+    for (const transaction of transactions) {
+      if (transaction.type !== "expense") continue;
+      const month = getMonthKey(transaction.date);
+      if (!grouped[month]) {
+        grouped[month] = {
+          month,
+          fixed: 0,
+          investments: 0,
+          savings: 0,
+          guilt_free: 0,
+          total: 0,
+        };
+      }
+      grouped[month][transaction.bucket] += Number(transaction.amount || 0);
+      grouped[month].total += Number(transaction.amount || 0);
+    }
+
+    return Object.values(grouped).sort((a, b) => (a.month > b.month ? 1 : -1));
+  }, [transactions]);
+
+  const latestMonth = data[data.length - 1];
+  const averageMonthlySpend =
+    data.length > 0
+      ? data.reduce((sum, month) => sum + Number(month.total || 0), 0) / data.length
+      : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -47,6 +67,23 @@ export default function Reports() {
           Export CSV
         </button>
       </div>
+
+      {data.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="card bg-white/85">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Latest Month</p>
+            <p className="mt-2 text-lg font-bold text-slate-900">{latestMonth?.month || "N/A"}</p>
+          </div>
+          <div className="card bg-white/85">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Latest Spend</p>
+            <p className="mt-2 text-lg font-bold text-rose-600">{formatCurrency(latestMonth?.total || 0, settings.currency)}</p>
+          </div>
+          <div className="card bg-white/85">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Avg Monthly Spend</p>
+            <p className="mt-2 text-lg font-bold text-slate-900">{formatCurrency(averageMonthlySpend, settings.currency)}</p>
+          </div>
+        </div>
+      )}
 
       {data.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-16 text-center">
