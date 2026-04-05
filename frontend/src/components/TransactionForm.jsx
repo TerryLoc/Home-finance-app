@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { BUCKETS, tagBucketFromDescription } from "../utils/budgetHelpers";
 
 const initial = {
@@ -11,15 +11,12 @@ const initial = {
 };
 
 export default function TransactionForm({ onSubmit, editingTransaction, onCancelEdit }) {
-  const [form, setForm] = useState(initial);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (editingTransaction) {
-      setForm({ ...editingTransaction, amount: String(editingTransaction.amount) });
-      setOpen(true);
-    }
-  }, [editingTransaction]);
+  const [form, setForm] = useState(() => (
+    editingTransaction
+      ? { ...editingTransaction, amount: String(editingTransaction.amount) }
+      : initial
+  ));
+  const [open, setOpen] = useState(() => !!editingTransaction);
 
   const isEditing = !!editingTransaction;
   const submitLabel = useMemo(() => (isEditing ? "Update" : "Add"), [isEditing]);

@@ -55,6 +55,7 @@ export default function Transactions() {
       </div>
 
       <TransactionForm
+        key={editingTransaction?.id || "new-transaction"}
         onSubmit={handleSubmit}
         editingTransaction={editingTransaction}
         onCancelEdit={() => setEditingTransaction(null)}
