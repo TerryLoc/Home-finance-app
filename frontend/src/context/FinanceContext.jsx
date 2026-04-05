@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
-import useLocalStorage from "../hooks/useLocalStorage";
 import { createDemoTransactions, DEFAULT_BUCKET_TARGETS } from "../utils/budgetHelpers";
 
 const FinanceContext = createContext(null);
@@ -9,6 +8,30 @@ const defaultSettings = {
   currency: "EUR",
   bucketTargets: DEFAULT_BUCKET_TARGETS,
 };
+
+const STORAGE_KEYS = {
+  settings: "hft_settings",
+  transactions: "hft_transactions",
+  goals: "hft_goals",
+};
+
+function readStorage(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore quota and serialization issues.
+  }
+}
 
 /** Migrate old single monthlyIncome → per-month map */
 function migrateSettings(raw) {
@@ -32,6 +55,52 @@ function generateId() {
   return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
 }
 
+function toNumber(value, fallback = 0) {
+  const next = Number(value);
+  return Number.isFinite(next) ? next : fallback;
+}
+
+function normalizeTransaction(transaction) {
+  return {
+    ...transaction,
+    amount: toNumber(transaction.amount),
+    date: transaction.date || new Date().toISOString().slice(0, 10),
+    description: String(transaction.description || "").trim(),
+    category: String(transaction.category || "").trim(),
+    type: transaction.type === "income" ? "income" : "expense",
+  };
+}
+
+function normalizeGoal(goal) {
+  return {
+    ...goal,
+    name: String(goal.name || "").trim(),
+    targetAmount: toNumber(goal.targetAmount),
+    currentAmount: toNumber(goal.currentAmount),
+    targetDate: goal.targetDate || "",
+  };
+}
+
+function createInitialState() {
+  const storedSettings = readStorage(STORAGE_KEYS.settings, null);
+  const storedTransactions = readStorage(STORAGE_KEYS.transactions, null);
+  const storedGoals = readStorage(STORAGE_KEYS.goals, null);
+
+  const transactions = Array.isArray(storedTransactions)
+    ? storedTransactions.map(normalizeTransaction)
+    : createDemoTransactions();
+
+  const goals = Array.isArray(storedGoals)
+    ? storedGoals.map(normalizeGoal)
+    : [];
+
+  return {
+    settings: migrateSettings(storedSettings),
+    transactions,
+    goals,
+  };
+}
+
 function reducer(state, action) {
   switch (action.type) {
     case "SET_MONTH_INCOME": {
@@ -42,7 +111,7 @@ function reducer(state, action) {
           ...state.settings,
           monthlyIncomes: {
             ...state.settings.monthlyIncomes,
-            [monthKey]: Number(amount || 0),
+            [monthKey]: toNumber(amount),
           },
         },
       };
@@ -64,14 +133,19 @@ function reducer(state, action) {
     case "ADD_TRANSACTION":
       return {
         ...state,
-        transactions: [{ id: generateId(), ...action.payload }, ...state.transactions],
+        transactions: [
+          normalizeTransaction({ id: generateId(), ...action.payload }),
+          ...state.transactions,
+        ],
       };
 
     case "UPDATE_TRANSACTION":
       return {
         ...state,
         transactions: state.transactions.map((transaction) =>
-          transaction.id === action.payload.id ? action.payload : transaction,
+          transaction.id === action.payload.id
+            ? normalizeTransaction(action.payload)
+            : transaction,
         ),
       };
 
@@ -86,14 +160,14 @@ function reducer(state, action) {
     case "ADD_GOAL":
       return {
         ...state,
-        goals: [{ id: generateId(), ...action.payload }, ...state.goals],
+        goals: [normalizeGoal({ id: generateId(), ...action.payload }), ...state.goals],
       };
 
     case "UPDATE_GOAL":
       return {
         ...state,
         goals: state.goals.map((goal) =>
-          goal.id === action.payload.id ? action.payload : goal,
+          goal.id === action.payload.id ? normalizeGoal(action.payload) : goal,
         ),
       };
 
@@ -109,36 +183,19 @@ function reducer(state, action) {
 }
 
 export function FinanceProvider({ children }) {
-  const [storedSettings, setStoredSettings] = useLocalStorage("hft_settings", null);
-  const [storedTransactions, setStoredTransactions] = useLocalStorage(
-    "hft_transactions",
-    null,
-  );
-  const [storedGoals, setStoredGoals] = useLocalStorage("hft_goals", null);
-
-  const [state, dispatch] = useReducer(reducer, {
-    settings: migrateSettings(storedSettings),
-    transactions: storedTransactions ?? createDemoTransactions(),
-    goals: storedGoals ?? [],
-  });
+  const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
 
   useEffect(() => {
-    if (JSON.stringify(storedSettings) !== JSON.stringify(state.settings)) {
-      setStoredSettings(state.settings);
-    }
-  }, [state.settings, storedSettings, setStoredSettings]);
+    writeStorage(STORAGE_KEYS.settings, state.settings);
+  }, [state.settings]);
 
   useEffect(() => {
-    if (JSON.stringify(storedTransactions) !== JSON.stringify(state.transactions)) {
-      setStoredTransactions(state.transactions);
-    }
-  }, [state.transactions, storedTransactions, setStoredTransactions]);
+    writeStorage(STORAGE_KEYS.transactions, state.transactions);
+  }, [state.transactions]);
 
   useEffect(() => {
-    if (JSON.stringify(storedGoals) !== JSON.stringify(state.goals)) {
-      setStoredGoals(state.goals);
-    }
-  }, [state.goals, storedGoals, setStoredGoals]);
+    writeStorage(STORAGE_KEYS.goals, state.goals);
+  }, [state.goals]);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);
 
