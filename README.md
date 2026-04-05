@@ -162,6 +162,16 @@ From repository root:
 npm run preview
 ```
 
+## Deployment Check
+
+Before sharing the live URL, confirm these 3 checks:
+
+- In GitHub repo settings, Pages source is set to **GitHub Actions** (not branch deploy).
+- The latest run of `.github/workflows/deploy-pages.yml` succeeded on `main`.
+- The site URL shows the app UI (Dashboard/Transactions/Goals/Reports), not rendered README content.
+
+If the page shows README text, Pages is publishing repository files instead of the built frontend artifact.
+
 ## Available Scripts
 
 Repository-level scripts ([package.json](package.json)):
