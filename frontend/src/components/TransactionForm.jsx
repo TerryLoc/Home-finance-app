@@ -23,19 +23,43 @@ export default function TransactionForm({ onSubmit, editingTransaction, onCancel
 
   const isEditing = !!editingTransaction;
   const submitLabel = useMemo(() => (isEditing ? "Update" : "Add"), [isEditing]);
+  const canSubmit = useMemo(() => {
+    return (
+      Number(form.amount) > 0
+      && form.description.trim().length > 1
+      && form.category.trim().length > 1
+      && !!form.date
+    );
+  }, [form]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === "description") {
-      setForm((p) => ({ ...p, description: value, bucket: tagBucketFromDescription(value) }));
+      setForm((p) => ({
+        ...p,
+        description: value,
+        bucket: p.type === "expense" ? tagBucketFromDescription(value) : p.bucket,
+      }));
       return;
     }
+
+    if (name === "type" && value === "income") {
+      setForm((p) => ({ ...p, type: value, bucket: "guilt_free" }));
+      return;
+    }
+
     setForm((p) => ({ ...p, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ ...form, amount: Number(form.amount) });
+    if (!canSubmit) return;
+    onSubmit({
+      ...form,
+      amount: Number(form.amount),
+      description: form.description.trim(),
+      category: form.category.trim(),
+    });
     if (!isEditing) { setForm(initial); setOpen(false); }
   };
 
@@ -92,7 +116,7 @@ export default function TransactionForm({ onSubmit, editingTransaction, onCancel
       </div>
 
       <div className="flex items-center gap-2 pt-1">
-        <button type="submit" className="btn-primary">{submitLabel} Transaction</button>
+        <button type="submit" className="btn-primary" disabled={!canSubmit}>{submitLabel} Transaction</button>
         {isEditing && <button type="button" onClick={onCancelEdit} className="btn-secondary">Cancel</button>}
       </div>
     </form>

@@ -41,8 +41,8 @@ function sidebarClass(isActive) {
   return [
     "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
     isActive
-      ? "bg-brand-600 text-white shadow-sm shadow-brand-600/25"
-      : "text-slate-400 hover:bg-slate-800 hover:text-white",
+      ? "bg-gradient-to-r from-brand-600 to-emerald-500 text-white shadow-sm shadow-brand-700/25"
+      : "text-slate-300 hover:bg-slate-800/70 hover:text-white",
   ].join(" ");
 }
 
@@ -50,7 +50,7 @@ function mobileClass(isActive) {
   return [
     "flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-all",
     isActive
-      ? "text-brand-600"
+      ? "bg-brand-50 text-brand-700"
       : "text-slate-400 hover:text-slate-600",
   ].join(" ");
 }
@@ -59,12 +59,15 @@ export default function NavBar() {
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800/50 bg-slate-900 md:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800/50 bg-gradient-to-b from-slate-900 to-slate-950 md:flex">
         <div className="flex items-center gap-3 px-5 pt-6 pb-8">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-lg shadow-md shadow-brand-600/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-emerald-500 text-lg shadow-md shadow-brand-600/30">
             💰
           </div>
-          <span className="text-base font-bold tracking-tight text-white">Household Finance</span>
+          <div>
+            <p className="text-base font-bold tracking-tight text-white">Household Finance</p>
+            <p className="text-xs text-slate-400">Plan with confidence</p>
+          </div>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
@@ -82,12 +85,13 @@ export default function NavBar() {
         </nav>
 
         <div className="mt-auto border-t border-slate-800 px-5 py-4">
-          <p className="text-xs text-slate-500">All data stored locally</p>
+          <p className="text-xs text-slate-500">Private by default</p>
+          <p className="mt-1 text-[11px] text-slate-600">All data stays on this device.</p>
         </div>
       </aside>
 
       {/* ── Mobile bottom bar ── */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/90 backdrop-blur-lg md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-lg md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-4 gap-1 px-2 py-1.5">
           {links.map((link) => (
             <NavLink
@@ -100,7 +104,7 @@ export default function NavBar() {
                 <>
                   <link.icon className={`h-5 w-5 ${isActive ? "text-brand-600" : ""}`} />
                   <span>{link.label}</span>
-                  {isActive && <span className="mx-auto mt-0.5 h-0.5 w-4 rounded-full bg-brand-600" />}
+                  {isActive && <span className="mx-auto mt-0.5 h-0.5 w-4 rounded-full bg-gradient-to-r from-brand-500 to-emerald-500" />}
                 </>
               )}
             </NavLink>

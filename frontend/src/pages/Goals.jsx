@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import GoalCard from "../components/GoalCard";
 import { useFinance } from "../context/FinanceContext";
-import { BUCKETS, getMonthKey, getMonthlyIncome } from "../utils/budgetHelpers";
+import { BUCKETS, formatCurrency, getMonthKey, getMonthlyIncome } from "../utils/budgetHelpers";
 
 const blankGoal = { name: "", targetAmount: "", currentAmount: "", targetDate: "", bucket: "savings" };
 
@@ -132,7 +132,10 @@ export default function Goals() {
           <div className="card bg-white/85">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Projected This Month</p>
             <p className="mt-2 text-lg font-bold text-slate-900">
-              {Object.values(monthlyContributionsByBucket).reduce((sum, value) => sum + Number(value || 0), 0).toFixed(0)}
+              {formatCurrency(
+                Object.values(monthlyContributionsByBucket).reduce((sum, value) => sum + Number(value || 0), 0),
+                settings.currency,
+              )}
             </p>
           </div>
         </div>
