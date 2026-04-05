@@ -41,6 +41,9 @@ jobs:
       - name: Add SPA fallback
         run: cp frontend/dist/index.html frontend/dist/404.html
 
+      - name: Disable Jekyll processing
+        run: touch frontend/dist/.nojekyll
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
